@@ -1,0 +1,24 @@
+server:
+  port: 0
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  jpa:
+    open-in-view: false
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  sql:
+    init:
+      mode: never
+
+logging:
+  level:
+    org.testcontainers: INFO
+
+testcontainers:
+  reuse: true

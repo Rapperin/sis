@@ -1,0 +1,8 @@
+/Users/rapperin/Desktop/sis/student-service/src/test/java/dev/talha/sis/student/StudentApiTest.java
+/Users/rapperin/Desktop/sis/student-service/src/test/java/dev/talha/sis/student/config/TestSecurityConfig.java
+/Users/rapperin/Desktop/sis/student-service/src/test/java/dev/talha/sis/student/it/containers/PostgresContainerSupport.java
+/Users/rapperin/Desktop/sis/student-service/src/test/java/dev/talha/sis/student/it/api/StudentApiTest.java
+/Users/rapperin/Desktop/sis/student-service/src/test/java/dev/talha/sis/student/it/api/EnrollmentControllerIT.java
+/Users/rapperin/Desktop/sis/student-service/src/test/java/dev/talha/sis/student/it/api/EnrollmentApiTest.java
+/Users/rapperin/Desktop/sis/student-service/src/test/java/dev/talha/sis/student/it/AbstractIntegrationTest.java
+/Users/rapperin/Desktop/sis/student-service/src/test/java/dev/talha/sis/student/it/repo/EnrollmentRepositoryIT.java
