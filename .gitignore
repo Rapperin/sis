@@ -1,0 +1,12 @@
+# IDE / OS
+.idea/
+*.iml
+.DS_Store
+
+# Build çıktıları
+target/
+*/target/
+
+# Docker & temp
+cookies.txt
+.env

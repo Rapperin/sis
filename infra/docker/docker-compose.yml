@@ -1,53 +1,58 @@
 version: "3.9"
 
 services:
-  rabbit:
-    image: rabbitmq:3.13-management
-    ports:
-      - "5672:5672"     # AMQP
-      - "15672:15672"   # Yönetim paneli (http://localhost:15672)
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    healthcheck:
-      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-
-  db:
-    image: postgres:16
+  postgres:
+    image: postgres:16-alpine
+    container_name: sis-postgres
     environment:
       POSTGRES_DB: sis_student
-      POSTGRES_USER: sis
-      POSTGRES_PASSWORD: sis
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
     ports:
-      - "5433:5432"
+      - "5433:5432"       # Lokal 5432 doluysa çakışmasın diye 5433 -> 5432
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sis -d sis_student"]
+      test: ["CMD", "pg_isready", "-U", "app"]
       interval: 5s
       timeout: 3s
-      retries: 20
+      retries: 10
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: sis-rabbit
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   student-service:
+    container_name: sis-student-service
     build:
+      # DİKKAT: Bu dosya infra/docker altında, proje yapına göre context yolu
+      # ../../student-service olmalı (infra/docker -> ../.. -> student-service)
       context: ../..
       dockerfile: student-service/Dockerfile
-    environment:
-      SPRING_PROFILES_ACTIVE: dev
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/sis_student
-      SPRING_DATASOURCE_USERNAME: sis
-      SPRING_DATASOURCE_PASSWORD: sis
-
-      # >>> RABBITMQ bağlantısı
-      SPRING_RABBITMQ_HOST: rabbit
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: guest
-      SPRING_RABBITMQ_PASSWORD: guest
     ports:
       - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_SECURITY_USER_NAME: app
+      SPRING_SECURITY_USER_PASSWORD: app
+
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/sis_student
+      SPRING_DATASOURCE_USERNAME: app
+      SPRING_DATASOURCE_PASSWORD: app
+      SPRING_RABBITMQ_HOST: rabbitmq
     depends_on:
-      rabbit:
+      postgres:
         condition: service_healthy
-      db:
+      rabbitmq:
         condition: service_healthy
+
+volumes:
+  pgdata:

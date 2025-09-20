@@ -9,7 +9,9 @@ dev/talha/sis/student/web/EnrollmentController.class
 dev/talha/sis/student/repo/EnrollmentRepository.class
 dev/talha/sis/student/entity/Enrollment.class
 dev/talha/sis/student/exception/ConflictException.class
+dev/talha/sis/student/config/DockerSecurityConfig.class
 dev/talha/sis/student/exception/NotFoundException.class
+dev/talha/sis/student/web/CsrfController.class
 dev/talha/sis/student/repo/StudentRepository.class
 dev/talha/sis/student/web/GlobalExceptionHandler.class
 dev/talha/sis/student/dto/EnrollmentDto.class

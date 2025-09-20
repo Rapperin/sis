@@ -3,38 +3,38 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5433/sis_student
-    username: sis
-    password: sis
+    url: jdbc:postgresql://postgres:5432/sis_student
+    username: student
+    password: student
+    driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: validate   # Şemayı Flyway yönetir
+    open-in-view: false
     properties:
-      hibernate:
-        format_sql: true
-        jdbc:
-          time_zone: UTC
-
+      hibernate.format_sql: true
   flyway:
     enabled: true
     locations: classpath:db/migration
-    # Flyway’in de aynı DB’ye bağlanması için:
-    url: jdbc:postgresql://localhost:5433/sis_student
-    user: sis
-    password: sis
+
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: guest
+    password: guest
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: "health,info"
   endpoint:
     health:
-      show-details: always        # bileşen durumlarını göster
-      show-components: always
-  health:
-    livenessstate:
-      enabled: true
-    readinessstate:
-      enabled: true
+      show-details: "never"
+
+logging:
+  level:
+    org.hibernate.SQL: warn
+    org.springframework.amqp: info
+    org.springframework.security: DEBUG

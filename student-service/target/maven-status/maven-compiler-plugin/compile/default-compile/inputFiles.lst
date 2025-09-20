@@ -3,6 +3,7 @@
 /Users/rapperin/Desktop/sis/student-service/src/main/java/dev/talha/sis/student/entity/EnrollmentId.java
 /Users/rapperin/Desktop/sis/student-service/src/main/java/dev/talha/sis/student/entity/Enrollment.java
 /Users/rapperin/Desktop/sis/student-service/src/main/java/dev/talha/sis/student/web/CourseController.java
+/Users/rapperin/Desktop/sis/student-service/src/main/java/dev/talha/sis/student/web/CsrfController.java
 /Users/rapperin/Desktop/sis/student-service/src/main/java/dev/talha/sis/student/web/StudentController.java
 /Users/rapperin/Desktop/sis/student-service/src/main/java/dev/talha/sis/student/repo/EnrollmentRepository.java
 /Users/rapperin/Desktop/sis/student-service/src/main/java/dev/talha/sis/student/StudentServiceApplication.java
@@ -11,6 +12,7 @@
 /Users/rapperin/Desktop/sis/student-service/src/main/java/dev/talha/sis/student/service/EnrollmentService.java
 /Users/rapperin/Desktop/sis/student-service/src/main/java/dev/talha/sis/student/entity/Student.java
 /Users/rapperin/Desktop/sis/student-service/src/main/java/dev/talha/sis/student/web/EnrollmentController.java
+/Users/rapperin/Desktop/sis/student-service/src/main/java/dev/talha/sis/student/config/DockerSecurityConfig.java
 /Users/rapperin/Desktop/sis/student-service/src/main/java/dev/talha/sis/student/config/DevSecurityConfig.java
 /Users/rapperin/Desktop/sis/student-service/src/main/java/dev/talha/sis/student/service/CourseService.java
 /Users/rapperin/Desktop/sis/student-service/src/main/java/dev/talha/sis/student/dto/EnrollmentDto.java
