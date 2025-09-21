@@ -8,7 +8,7 @@ create table if not exists instructor (
 -- Her "section" belirli bir dersin belirli dönemde açılmış şubesidir
 create table if not exists section (
                                        id bigserial primary key,
-                                       course_id bigint not null references course(id) on delete cascade,
+                                       course_id bigint not null references courses(id) on delete cascade,
     instructor_id bigint references instructor(id),
     semester varchar(40) not null,         -- ör: 'Fall 2025'
     capacity int not null default 40,      -- basit kapasite

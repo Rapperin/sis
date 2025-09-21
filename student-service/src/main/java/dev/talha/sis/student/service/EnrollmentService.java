@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import dev.talha.sis.student.exception.NotFoundException;
 
 @Service
 public class EnrollmentService {
@@ -47,4 +48,16 @@ public class EnrollmentService {
     public Page<Enrollment> listByCourse(Long courseId, Pageable pageable) {
         return enrollRepo.findByCourse_Id(courseId, pageable);
     }
+
+      @Transactional
+    public void delete(Long studentId, Long courseId, String semester) {
+        boolean exists = enrollRepo.existsByIdStudentIdAndIdCourseIdAndIdSemester(studentId, courseId, semester);
+        if (!exists) {
+            throw new NotFoundException("enrollment_not_found");
+        }
+        enrollRepo.deleteByIdStudentIdAndIdCourseIdAndIdSemester(studentId, courseId, semester);
+    }
+
+
+
 }

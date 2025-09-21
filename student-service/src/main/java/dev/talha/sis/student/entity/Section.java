@@ -4,23 +4,40 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Table(
+        name = "section",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_section_course_semester_instructor",
+                        columnNames = {"course_id", "semester", "instructor_id"}
+                )
+        }
+)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Section {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false) @JoinColumn(name = "course_id")
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
-    @ManyToOne @JoinColumn(name = "instructor_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "instructor_id")
     private Instructor instructor;
 
-    @Column(nullable = false, length = 40)
+    @Column(nullable = false, length = 20)
     private String semester;
 
     @Column(nullable = false)
-    private int capacity = 40;
+    private int capacity;
 
-    @Column(length = 120)
-    private String schedule; // basit gösterim
+    @Column(length = 50)
+    private String schedule;
 }

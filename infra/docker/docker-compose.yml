@@ -44,7 +44,7 @@ services:
       SPRING_SECURITY_USER_NAME: app
       SPRING_SECURITY_USER_PASSWORD: app
 
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/sis_student
+      SPRING_DATASOURCE_URL: jdbc:postgresql://sis-postgres:5432/sis_student
       SPRING_DATASOURCE_USERNAME: app
       SPRING_DATASOURCE_PASSWORD: app
       SPRING_RABBITMQ_HOST: rabbitmq

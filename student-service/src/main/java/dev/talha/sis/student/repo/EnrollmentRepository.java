@@ -6,6 +6,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface EnrollmentRepository extends JpaRepository<Enrollment, EnrollmentId> {
 
@@ -22,4 +24,11 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Enrollme
 
     @EntityGraph(attributePaths = {"student", "course"})
     Page<Enrollment> findByIdCourseId(Long courseId, Pageable pageable);
+
+    @Transactional
+    @Modifying
+    void deleteByIdStudentIdAndIdCourseIdAndIdSemester(Long studentId, Long courseId, String semester);
+
+    boolean existsByIdStudentIdAndIdCourseIdAndIdSemester(Long studentId, Long courseId, String semester);
+
 }

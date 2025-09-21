@@ -8,6 +8,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/v1/enrollments")
@@ -36,4 +39,16 @@ public class EnrollmentController {
                                          Pageable pageable) {
         return service.listByCourse(courseId, pageable);
     }
+
+    @DeleteMapping
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(
+            @RequestParam("studentId") Long studentId,
+            @RequestParam("courseId")  Long courseId,
+            @RequestParam("semester") String semester
+    ) {
+        service.delete(studentId, courseId, semester);
+    }
+
+
 }

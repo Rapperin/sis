@@ -1,6 +1,12 @@
 server:
   port: 8081
 
+error:
+  include-message: always
+  include-binding-errors: always
+  include-stacktrace: ALWAYS
+
+
 spring:
   datasource:
     url: jdbc:postgresql://postgres:5432/sis_student
@@ -35,6 +41,7 @@ management:
 
 logging:
   level:
-    org.hibernate.SQL: warn
+    org.hibernate.SQL: DEBUG
     org.springframework.amqp: info
     org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
