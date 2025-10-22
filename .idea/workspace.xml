@@ -5,44 +5,32 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="76decb07-20c0-46de-ac5c-305710913aab" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/sis.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/infra/docker/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/infra/docker/docker-compose.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/entity/Instructor.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/entity/Instructor.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/entity/Section.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/entity/Section.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/repo/EnrollmentRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/repo/EnrollmentRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/entity-dto-mapping.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/pagination.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/mapper/CourseMapper.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/mapper/EnrollmentMapper.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/mapper/InstructorMapper.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/mapper/SectionMapper.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/mapper/StudentMapper.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/student-service/src/test/java/dev/talha/sis/student/web/CourseControllerPaginationTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/student-service/src/test/java/dev/talha/sis/student/web/EnrollmentControllerPaginationTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/student-service/src/test/java/dev/talha/sis/student/web/StudentControllerPaginationTest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/dto/CourseDto.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/dto/CourseDto.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/dto/EnrollmentDto.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/dto/EnrollmentDto.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/dto/InstructorDto.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/dto/InstructorDto.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/dto/SectionDto.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/dto/SectionDto.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/dto/StudentDto.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/dto/StudentDto.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/entity/Course.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/entity/Course.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/entity/Enrollment.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/entity/Enrollment.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/entity/Student.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/entity/Student.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/service/CourseService.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/service/CourseService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/service/EnrollmentService.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/service/EnrollmentService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/service/InstructorService.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/service/InstructorService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/service/SectionService.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/service/SectionService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/service/StudentService.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/service/StudentService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/web/CourseController.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/web/CourseController.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/web/EnrollmentController.java" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/java/dev/talha/sis/student/web/EnrollmentController.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/student-service/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/resources/application.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/src/main/resources/db/migration/V4__instructor_and_section.sql" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/src/main/resources/db/migration/V4__instructor_and_section.sql" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/application.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/StudentServiceApplication.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/StudentServiceApplication.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/config/DevSecurityConfig.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/config/DevSecurityConfig.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/dto/CourseDto.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/dto/CourseDto.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/dto/EnrollmentDto.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/dto/EnrollmentDto.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/dto/StudentDto.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/dto/StudentDto.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/entity/Course.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/entity/Course.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/entity/Enrollment.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/entity/Enrollment.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/entity/EnrollmentId.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/entity/EnrollmentId.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/entity/Student.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/entity/Student.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/exception/ConflictException.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/exception/ConflictException.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/exception/NotFoundException.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/exception/NotFoundException.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/repo/CourseRepository.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/repo/CourseRepository.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/repo/EnrollmentRepository.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/repo/EnrollmentRepository.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/repo/StudentRepository.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/repo/StudentRepository.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/service/CourseService.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/service/CourseService.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/service/EnrollmentService.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/service/EnrollmentService.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/service/StudentService.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/service/StudentService.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/web/CourseController.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/web/CourseController.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/web/EnrollmentController.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/web/EnrollmentController.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/web/GlobalExceptionHandler.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/web/GlobalExceptionHandler.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/web/StudentController.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/classes/dev/talha/sis/student/web/StudentController.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/test-classes/dev/talha/sis/student/StudentApiTest.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/test-classes/dev/talha/sis/student/StudentApiTest.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student-service/target/test-classes/dev/talha/sis/student/config/TestSecurityConfig.class" beforeDir="false" afterPath="$PROJECT_DIR$/student-service/target/test-classes/dev/talha/sis/student/config/TestSecurityConfig.class" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -84,7 +72,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "Spring Boot.StudentServiceApplication.executor": "Run",
-    "git-widget-placeholder": "main",
+    "git-widget-placeholder": "patch/change3",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "/Users/rapperin/Desktop/sis",
     "node.js.detected.package.eslint": "true",

@@ -1,0 +1,1975 @@
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/docs/entity-dto-mapping.md b/docs/entity-dto-mapping.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..f067ed15700765a1d0ebd23a0ff5fc7f72677c52
+--- /dev/null
++++ b/docs/entity-dto-mapping.md
+@@ -0,0 +1,64 @@
++# Entity ↔ DTO Dönüşümleri
++
++Bu projede veri aktarım nesneleri (DTO) ile JPA varlıklarını ayırmak; kalıcı katmanla sunum/istek modellerinin bağımlılığını azaltır, doğrulama ve sürümleme işlerini kolaylaştırır. Aşağıdaki örnek, `Student` varlığı ile `StudentDto` arasında dönüşümü gerçekleştiren bir eşleyiciyi göstermektedir.
++
++```java
++@Component
++public class StudentMapper {
++
++    public StudentDto toDto(Student s) {
++        return new StudentDto(
++                s.getId(),
++                s.getFirstName(),
++                s.getLastName(),
++                s.getEmail(),
++                s.getBirthDate()
++        );
++    }
++
++    public Student toEntity(StudentDto d) {
++        Student s = new Student();
++        updateEntity(d, s);
++        s.setId(d.id());
++        return s;
++    }
++
++    public void updateEntity(StudentDto d, Student target) {
++        target.setFirstName(d.firstName());
++        target.setLastName(d.lastName());
++        target.setEmail(d.email());
++        target.setBirthDate(d.birthDate());
++    }
++}
++```
++
++Servis katmanı, bu bileşeni enjekte ederek hem yeni kayıt oluştururken hem de güncellerken dönüşüm mantığını yeniden kullanabilir:
++
++```java
++@Service
++public class StudentService {
++
++    private final StudentRepository repo;
++    private final StudentMapper mapper;
++
++    public StudentService(StudentRepository repo, StudentMapper mapper) {
++        this.repo = repo;
++        this.mapper = mapper;
++    }
++
++    public StudentDto create(StudentDto dto) {
++        Student entity = mapper.toEntity(dto);
++        entity = repo.save(entity);
++        return mapper.toDto(entity);
++    }
++
++    public StudentDto update(Long id, StudentDto dto) {
++        Student entity = repo.findById(id)
++                .orElseThrow(() -> new NotFoundException("student_not_found"));
++        mapper.updateEntity(dto, entity);
++        return mapper.toDto(repo.save(entity));
++    }
++}
++```
++
++> İpucu: Proje büyüdükçe `MapStruct` gibi araçlarla bu eşleme sınıflarını otomatik üretmeyi düşünebilirsiniz. Ancak manuel yaklaşım, mantığın kolayca özelleştirilmesini sağlar.
+diff --git a/docs/pagination.md b/docs/pagination.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..6075794ee82a0739504cb3ee9d0efd834d727f44
+--- /dev/null
++++ b/docs/pagination.md
+@@ -0,0 +1,41 @@
++# API Pagination Guidelines
++
++Bu servislerde çok sayıda kayıt döndürülmesi gereken uç noktalar `Spring Data`'nın `Pageable` soyutlamasını kullanır. Böylece istemciler sonuçları sayfalara bölerek tüketebilir ve tek istekte aşırı veri taşımaktan kaçınır.
++
++## Varsayılan Davranış
++
++- Varsayılan sayfa büyüklüğü 20 kayıttır.
++- İstemci `page` ve `size` parametrelerini göndermediğinde, ilk sayfa (`page=0`) ve 20 kayıt döner.
++- Bu varsayılan, `@PageableDefault(size = 20)` anotasyonu ve `spring.data.web.pageable.default-page-size` yapılandırması ile uygulandı.
++
++## Parametre Kullanımı
++
++Herhangi bir listeleme uç noktasına aşağıdaki sorgu parametreleri gönderilebilir:
++
++| Parametre | Açıklama | Varsayılan |
++|-----------|----------|------------|
++| `page`    | 0 tabanlı sayfa numarası | `0` |
++| `size`    | Sayfa başına kayıt sayısı | `20` |
++| `sort`    | `property,ASC|DESC` formatında sıralama bilgisi | Entity varsayılan sıralaması |
++
++Örnek istek:
++
++```http
++GET /api/v1/students?page=1&size=10&sort=lastName,asc
++```
++
++Bu istek ikinci sayfadaki (0 tabanlı) 10 öğrenciyi soyadlarına göre artan sıralı olarak döndürür.
++
++## Etkilenen Uç Noktalar
++
++Aşağıdaki uç noktalar artık varsayılan olarak 20 kayıt döndürür, fakat isteğe göre `size` parametresiyle özelleştirilebilir:
++
++- `GET /api/v1/students`
++- `GET /api/v1/courses`
++- `GET /api/v1/instructors`
++- `GET /api/v1/sections`
++- `GET /api/v1/enrollments/by-student/{studentId}`
++- `GET /api/v1/enrollments/by-course/{courseId}`
++
++İstemciler `page` ve `size` parametreleriyle bu sayfaların üzerinden gezinerek tüm sonuçları elde edebilir.
++
+diff --git a/student-service/pom.xml b/student-service/pom.xml
+index 171744b2f489127b115562328da23a4ba3bf0baa..99324e29a7dea284833746c266b5a75d6ca35414 100644
+--- a/student-service/pom.xml
++++ b/student-service/pom.xml
+@@ -38,50 +38,55 @@
+             <version>1.18.34</version>
+             <scope>provided</scope>
+         </dependency>
+ 
+         <dependency>
+             <groupId>org.springdoc</groupId>
+             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+             <version>2.5.0</version>
+         </dependency>
+         <dependency>
+             <groupId>org.springframework.boot</groupId>
+             <artifactId>spring-boot-testcontainers</artifactId>
+             <scope>test</scope>
+         </dependency>
+ 
+ 
+         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
+         <dependency><groupId>org.testcontainers</groupId><artifactId>junit-jupiter</artifactId><version>1.19.8</version><scope>test</scope></dependency>
+         <dependency><groupId>org.testcontainers</groupId><artifactId>postgresql</artifactId><version>1.19.8</version><scope>test</scope></dependency>
+         <dependency>
+             <groupId>org.testcontainers</groupId>
+             <artifactId>rabbitmq</artifactId>
+             <version>1.19.8</version>
+             <scope>test</scope>
+         </dependency>
++        <dependency>
++            <groupId>com.h2database</groupId>
++            <artifactId>h2</artifactId>
++            <scope>test</scope>
++        </dependency>
+     </dependencies>
+ 
+     <build>
+         <plugins>
+             <plugin>
+                 <groupId>org.springframework.boot</groupId>
+                 <artifactId>spring-boot-maven-plugin</artifactId>
+                 <version>${spring.boot.version}</version>
+                 <executions>
+                     <execution><goals><goal>repackage</goal></goals></execution>
+                 </executions>
+             </plugin>
+ 
+             <!-- TEK compiler plugin: parameters=true şart -->
+             <plugin>
+                 <groupId>org.apache.maven.plugins</groupId>
+                 <artifactId>maven-compiler-plugin</artifactId>
+                 <version>3.11.0</version>
+                 <configuration>
+                     <source>${java.version}</source>
+                     <target>${java.version}</target>
+ 
+                     <!-- ÖNEMLİ: Lombok annotation processing -->
+                     <annotationProcessorPaths>
+                         <path>
+diff --git a/student-service/src/main/java/dev/talha/sis/student/dto/CourseDto.java b/student-service/src/main/java/dev/talha/sis/student/dto/CourseDto.java
+index 6af49bfa40aeebae8fe48fdf9ab27ee00c06c85f..ef2596adda7b86eb7cef6d10d0c9486f154fa171 100644
+--- a/student-service/src/main/java/dev/talha/sis/student/dto/CourseDto.java
++++ b/student-service/src/main/java/dev/talha/sis/student/dto/CourseDto.java
+@@ -1,9 +1,49 @@
+ package dev.talha.sis.student.dto;
+ 
+ import jakarta.validation.constraints.*;
+ 
+ public record CourseDto(
+-        @NotBlank @Size(max=20) String code,
+-        @NotBlank @Size(max=150) String name,
++        Long id,
++        @NotBlank @Size(max = 20) String code,
++        @NotBlank @Size(max = 150) String name,
+         @Min(1) @Max(15) int credit
+-) {}
++) {
++
++    public static Builder builder() {
++        return new Builder();
++    }
++
++    public static final class Builder {
++        private Long id;
++        private String code;
++        private String name;
++        private Integer credit;
++
++        private Builder() {
++        }
++
++        public Builder id(Long id) {
++            this.id = id;
++            return this;
++        }
++
++        public Builder code(String code) {
++            this.code = code;
++            return this;
++        }
++
++        public Builder name(String name) {
++            this.name = name;
++            return this;
++        }
++
++        public Builder credit(Integer credit) {
++            this.credit = credit;
++            return this;
++        }
++
++        public CourseDto build() {
++            return new CourseDto(id, code, name, credit != null ? credit : 0);
++        }
++    }
++}
+diff --git a/student-service/src/main/java/dev/talha/sis/student/dto/EnrollmentDto.java b/student-service/src/main/java/dev/talha/sis/student/dto/EnrollmentDto.java
+index e711f3b8ecd658e1e15094312d12910cdb5ae762..8e2efe5e9eba5ccc69675cfc086ad5f8478405ce 100644
+--- a/student-service/src/main/java/dev/talha/sis/student/dto/EnrollmentDto.java
++++ b/student-service/src/main/java/dev/talha/sis/student/dto/EnrollmentDto.java
+@@ -1,10 +1,43 @@
+ package dev.talha.sis.student.dto;
+ 
+ import jakarta.validation.constraints.NotNull;
+ import jakarta.validation.constraints.NotBlank;
+ 
+ public record EnrollmentDto(
+         @NotNull Long studentId,
+         @NotNull Long courseId,
+         @NotBlank String semester
+-) {}
++) {
++
++    public static Builder builder() {
++        return new Builder();
++    }
++
++    public static final class Builder {
++        private Long studentId;
++        private Long courseId;
++        private String semester;
++
++        private Builder() {
++        }
++
++        public Builder studentId(Long studentId) {
++            this.studentId = studentId;
++            return this;
++        }
++
++        public Builder courseId(Long courseId) {
++            this.courseId = courseId;
++            return this;
++        }
++
++        public Builder semester(String semester) {
++            this.semester = semester;
++            return this;
++        }
++
++        public EnrollmentDto build() {
++            return new EnrollmentDto(studentId, courseId, semester);
++        }
++    }
++}
+diff --git a/student-service/src/main/java/dev/talha/sis/student/dto/InstructorDto.java b/student-service/src/main/java/dev/talha/sis/student/dto/InstructorDto.java
+index b383afbd13e3064f6a1ec8f360e61b6118a1c595..b224a4c4d45f6d7e5ca03537dd5680fba83abd9f 100644
+--- a/student-service/src/main/java/dev/talha/sis/student/dto/InstructorDto.java
++++ b/student-service/src/main/java/dev/talha/sis/student/dto/InstructorDto.java
+@@ -1,10 +1,49 @@
+ package dev.talha.sis.student.dto;
+ 
+ import jakarta.validation.constraints.*;
+ 
+ public record InstructorDto(
+         Long id,
+         @NotBlank @Size(max=100) String firstName,
+         @NotBlank @Size(max=100) String lastName,
+         @Email String email
+-) {}
++) {
++
++    public static Builder builder() {
++        return new Builder();
++    }
++
++    public static final class Builder {
++        private Long id;
++        private String firstName;
++        private String lastName;
++        private String email;
++
++        private Builder() {
++        }
++
++        public Builder id(Long id) {
++            this.id = id;
++            return this;
++        }
++
++        public Builder firstName(String firstName) {
++            this.firstName = firstName;
++            return this;
++        }
++
++        public Builder lastName(String lastName) {
++            this.lastName = lastName;
++            return this;
++        }
++
++        public Builder email(String email) {
++            this.email = email;
++            return this;
++        }
++
++        public InstructorDto build() {
++            return new InstructorDto(id, firstName, lastName, email);
++        }
++    }
++}
+diff --git a/student-service/src/main/java/dev/talha/sis/student/dto/SectionDto.java b/student-service/src/main/java/dev/talha/sis/student/dto/SectionDto.java
+index 443c06cee0ddab8ff42dd2f9797c43501fb2341b..3c6d44710295c2a4d4ad679433a95454bdfe5f75 100644
+--- a/student-service/src/main/java/dev/talha/sis/student/dto/SectionDto.java
++++ b/student-service/src/main/java/dev/talha/sis/student/dto/SectionDto.java
+@@ -1,12 +1,70 @@
+ package dev.talha.sis.student.dto;
+ 
+ import jakarta.validation.constraints.*;
+ 
+ public record SectionDto(
+         Long id,
+         @NotNull Long courseId,
+         Long instructorId,
+         @NotBlank @Size(max=40) String semester,
+         @Min(1) @Max(500) int capacity,
+         @Size(max=120) String schedule
+-) {}
++) {
++
++    public static Builder builder() {
++        return new Builder();
++    }
++
++    public static final class Builder {
++        private Long id;
++        private Long courseId;
++        private Long instructorId;
++        private String semester;
++        private Integer capacity;
++        private String schedule;
++
++        private Builder() {
++        }
++
++        public Builder id(Long id) {
++            this.id = id;
++            return this;
++        }
++
++        public Builder courseId(Long courseId) {
++            this.courseId = courseId;
++            return this;
++        }
++
++        public Builder instructorId(Long instructorId) {
++            this.instructorId = instructorId;
++            return this;
++        }
++
++        public Builder semester(String semester) {
++            this.semester = semester;
++            return this;
++        }
++
++        public Builder capacity(Integer capacity) {
++            this.capacity = capacity;
++            return this;
++        }
++
++        public Builder schedule(String schedule) {
++            this.schedule = schedule;
++            return this;
++        }
++
++        public SectionDto build() {
++            return new SectionDto(
++                    id,
++                    courseId,
++                    instructorId,
++                    semester,
++                    capacity != null ? capacity : 0,
++                    schedule
++            );
++        }
++    }
++}
+diff --git a/student-service/src/main/java/dev/talha/sis/student/dto/StudentDto.java b/student-service/src/main/java/dev/talha/sis/student/dto/StudentDto.java
+index e9531b38bcf2fbbe31841136e83f1f53908ff2b2..bd7c6995dad3e5c782c998fd478ce2fcd8720ea7 100644
+--- a/student-service/src/main/java/dev/talha/sis/student/dto/StudentDto.java
++++ b/student-service/src/main/java/dev/talha/sis/student/dto/StudentDto.java
+@@ -1,13 +1,58 @@
+ package dev.talha.sis.student.dto;
+ 
+ import jakarta.validation.constraints.Email;
+ import jakarta.validation.constraints.NotBlank;
+ import java.time.LocalDate;
+ 
+ public record StudentDto(
+         Long id,
+         @NotBlank String firstName,
+         @NotBlank String lastName,
+         @Email String email,
+         LocalDate birthDate
+-) {}
++) {
++
++    public static Builder builder() {
++        return new Builder();
++    }
++
++    public static final class Builder {
++        private Long id;
++        private String firstName;
++        private String lastName;
++        private String email;
++        private LocalDate birthDate;
++
++        private Builder() {
++        }
++
++        public Builder id(Long id) {
++            this.id = id;
++            return this;
++        }
++
++        public Builder firstName(String firstName) {
++            this.firstName = firstName;
++            return this;
++        }
++
++        public Builder lastName(String lastName) {
++            this.lastName = lastName;
++            return this;
++        }
++
++        public Builder email(String email) {
++            this.email = email;
++            return this;
++        }
++
++        public Builder birthDate(LocalDate birthDate) {
++            this.birthDate = birthDate;
++            return this;
++        }
++
++        public StudentDto build() {
++            return new StudentDto(id, firstName, lastName, email, birthDate);
++        }
++    }
++}
+diff --git a/student-service/src/main/java/dev/talha/sis/student/dto/StudentFilter.java b/student-service/src/main/java/dev/talha/sis/student/dto/StudentFilter.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..da39d29101a7ae3630e852ca5e16b35a0d190f4e
+--- /dev/null
++++ b/student-service/src/main/java/dev/talha/sis/student/dto/StudentFilter.java
+@@ -0,0 +1,113 @@
++package dev.talha.sis.student.dto;
++
++import org.springframework.format.annotation.DateTimeFormat;
++
++import java.time.LocalDate;
++
++public class StudentFilter {
++
++    private String firstName;
++    private String lastName;
++    private String email;
++
++    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
++    private LocalDate birthDateFrom;
++
++    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
++    private LocalDate birthDateTo;
++
++    public StudentFilter() {
++    }
++
++    private StudentFilter(Builder builder) {
++        this.firstName = builder.firstName;
++        this.lastName = builder.lastName;
++        this.email = builder.email;
++        this.birthDateFrom = builder.birthDateFrom;
++        this.birthDateTo = builder.birthDateTo;
++    }
++
++    public static Builder builder() {
++        return new Builder();
++    }
++
++    public String getFirstName() {
++        return firstName;
++    }
++
++    public void setFirstName(String firstName) {
++        this.firstName = firstName;
++    }
++
++    public String getLastName() {
++        return lastName;
++    }
++
++    public void setLastName(String lastName) {
++        this.lastName = lastName;
++    }
++
++    public String getEmail() {
++        return email;
++    }
++
++    public void setEmail(String email) {
++        this.email = email;
++    }
++
++    public LocalDate getBirthDateFrom() {
++        return birthDateFrom;
++    }
++
++    public void setBirthDateFrom(LocalDate birthDateFrom) {
++        this.birthDateFrom = birthDateFrom;
++    }
++
++    public LocalDate getBirthDateTo() {
++        return birthDateTo;
++    }
++
++    public void setBirthDateTo(LocalDate birthDateTo) {
++        this.birthDateTo = birthDateTo;
++    }
++
++    public static final class Builder {
++        private String firstName;
++        private String lastName;
++        private String email;
++        private LocalDate birthDateFrom;
++        private LocalDate birthDateTo;
++
++        private Builder() {
++        }
++
++        public Builder firstName(String firstName) {
++            this.firstName = firstName;
++            return this;
++        }
++
++        public Builder lastName(String lastName) {
++            this.lastName = lastName;
++            return this;
++        }
++
++        public Builder email(String email) {
++            this.email = email;
++            return this;
++        }
++
++        public Builder birthDateFrom(LocalDate birthDateFrom) {
++            this.birthDateFrom = birthDateFrom;
++            return this;
++        }
++
++        public Builder birthDateTo(LocalDate birthDateTo) {
++            this.birthDateTo = birthDateTo;
++            return this;
++        }
++
++        public StudentFilter build() {
++            return new StudentFilter(this);
++        }
++    }
++}
+diff --git a/student-service/src/main/java/dev/talha/sis/student/entity/Course.java b/student-service/src/main/java/dev/talha/sis/student/entity/Course.java
+index abf481657c2643f2dd1d49c816d643a53196175b..cb2b44e4b7d85e13772ccd5b1d110a6a392da7db 100644
+--- a/student-service/src/main/java/dev/talha/sis/student/entity/Course.java
++++ b/student-service/src/main/java/dev/talha/sis/student/entity/Course.java
+@@ -25,26 +25,69 @@ public class Course {
+ 
+     @Min(1)
+     @Max(15)
+     @Column(nullable = false)
+     private Integer credit;
+ 
+     public Course() {}
+ 
+     public Course(String code, String name, int credit) {
+         this.code = code;
+         this.name = name;
+         this.credit = credit;
+     }
+ 
+     public Long getId() { return id; }
+     public void setId(Long id) { this.id = id; }
+ 
+     public String getCode() { return code; }
+     public void setCode(String code) { this.code = code; }
+ 
+     public String getName() { return name; }
+     public void setName(String name) { this.name = name; }
+ 
+     public Integer getCredit() { return credit; }
+     public void setCredit(Integer credit) { this.credit = credit; }
++
++    public static Builder builder() {
++        return new Builder();
++    }
++
++    public static final class Builder {
++        private Long id;
++        private String code;
++        private String name;
++        private Integer credit;
++
++        private Builder() {
++        }
++
++        public Builder id(Long id) {
++            this.id = id;
++            return this;
++        }
++
++        public Builder code(String code) {
++            this.code = code;
++            return this;
++        }
++
++        public Builder name(String name) {
++            this.name = name;
++            return this;
++        }
++
++        public Builder credit(Integer credit) {
++            this.credit = credit;
++            return this;
++        }
++
++        public Course build() {
++            Course course = new Course();
++            course.setId(id);
++            course.setCode(code);
++            course.setName(name);
++            course.setCredit(credit);
++            return course;
++        }
++    }
+ }
+diff --git a/student-service/src/main/java/dev/talha/sis/student/entity/Enrollment.java b/student-service/src/main/java/dev/talha/sis/student/entity/Enrollment.java
+index b248d9c91de1f984e2581074b74724f01ab719fc..96513705dc41477aab768518cfe9feba5f37ea64 100644
+--- a/student-service/src/main/java/dev/talha/sis/student/entity/Enrollment.java
++++ b/student-service/src/main/java/dev/talha/sis/student/entity/Enrollment.java
+@@ -24,26 +24,99 @@ public class Enrollment {
+     private Course course;
+ 
+     @NotBlank
+     @Column(nullable = false, length = 20)
+     private String status = "ENROLLED";
+ 
+     public Enrollment() {}
+ 
+     public Enrollment(Student student, Course course, String semester) {
+         this.student = student;
+         this.course  = course;
+         this.id      = new EnrollmentId(student.getId(), course.getId(), semester);
+     }
+ 
+     public EnrollmentId getId() { return id; }
+     public void setId(EnrollmentId id) { this.id = id; }
+ 
+     public Student getStudent() { return student; }
+     public void setStudent(Student student) { this.student = student; }
+ 
+     public Course getCourse() { return course; }
+     public void setCourse(Course course) { this.course = course; }
+ 
+     public String getStatus() { return status; }
+     public void setStatus(String status) { this.status = status; }
++
++    public static Builder builder() {
++        return new Builder();
++    }
++
++    public static final class Builder {
++        private EnrollmentId id;
++        private Student student;
++        private Course course;
++        private Long studentId;
++        private Long courseId;
++        private String semester;
++        private String status = "ENROLLED";
++
++        private Builder() {
++        }
++
++        public Builder id(EnrollmentId id) {
++            this.id = id;
++            return this;
++        }
++
++        public Builder student(Student student) {
++            this.student = student;
++            return this;
++        }
++
++        public Builder course(Course course) {
++            this.course = course;
++            return this;
++        }
++
++        public Builder studentId(Long studentId) {
++            this.studentId = studentId;
++            return this;
++        }
++
++        public Builder courseId(Long courseId) {
++            this.courseId = courseId;
++            return this;
++        }
++
++        public Builder semester(String semester) {
++            this.semester = semester;
++            return this;
++        }
++
++        public Builder status(String status) {
++            this.status = status;
++            return this;
++        }
++
++        public Enrollment build() {
++            Enrollment enrollment = new Enrollment();
++            enrollment.setStudent(student);
++            enrollment.setCourse(course);
++            enrollment.setStatus(status != null ? status : "ENROLLED");
++
++            EnrollmentId targetId = this.id;
++            if (targetId == null) {
++                Long resolvedStudentId = student != null ? student.getId() : studentId;
++                Long resolvedCourseId = course != null ? course.getId() : courseId;
++                if (resolvedStudentId != null && resolvedCourseId != null && semester != null) {
++                    targetId = new EnrollmentId(resolvedStudentId, resolvedCourseId, semester);
++                }
++            } else if (semester != null && !semester.equals(targetId.getSemester())) {
++                targetId = new EnrollmentId(targetId.getStudentId(), targetId.getCourseId(), semester);
++            }
++
++            enrollment.setId(targetId);
++            return enrollment;
++        }
++    }
+ }
+diff --git a/student-service/src/main/java/dev/talha/sis/student/entity/Student.java b/student-service/src/main/java/dev/talha/sis/student/entity/Student.java
+index 8a3312c968c4b06aa72d8e03394edcde39665e3f..16ab250aa1be56e58256d4bb767fd4ab528339a7 100644
+--- a/student-service/src/main/java/dev/talha/sis/student/entity/Student.java
++++ b/student-service/src/main/java/dev/talha/sis/student/entity/Student.java
+@@ -17,26 +17,76 @@ public class Student {
+     private String firstName;
+ 
+     @Column(name="last_name", nullable=false)
+     private String lastName;
+ 
+     @Column(name="email", nullable=false, unique=true)
+     private String email;
+ 
+     @Column(name="birth_date")
+     private LocalDate birthDate;
+ 
+     public Long getId(){ return id; }
+     public void setId(Long id){ this.id = id; }
+ 
+     public String getFirstName(){ return firstName; }
+     public void setFirstName(String v){ this.firstName = v; }
+ 
+     public String getLastName(){ return lastName; }
+     public void setLastName(String v){ this.lastName = v; }
+ 
+     public String getEmail(){ return email; }
+     public void setEmail(String v){ this.email = v; }
+ 
+     public LocalDate getBirthDate(){ return birthDate; }
+     public void setBirthDate(LocalDate v){ this.birthDate = v; }
++
++    public static Builder builder() {
++        return new Builder();
++    }
++
++    public static final class Builder {
++        private Long id;
++        private String firstName;
++        private String lastName;
++        private String email;
++        private LocalDate birthDate;
++
++        private Builder() {
++        }
++
++        public Builder id(Long id) {
++            this.id = id;
++            return this;
++        }
++
++        public Builder firstName(String firstName) {
++            this.firstName = firstName;
++            return this;
++        }
++
++        public Builder lastName(String lastName) {
++            this.lastName = lastName;
++            return this;
++        }
++
++        public Builder email(String email) {
++            this.email = email;
++            return this;
++        }
++
++        public Builder birthDate(LocalDate birthDate) {
++            this.birthDate = birthDate;
++            return this;
++        }
++
++        public Student build() {
++            Student student = new Student();
++            student.setId(id);
++            student.setFirstName(firstName);
++            student.setLastName(lastName);
++            student.setEmail(email);
++            student.setBirthDate(birthDate);
++            return student;
++        }
++    }
+ }
+diff --git a/student-service/src/main/java/dev/talha/sis/student/mapper/CourseMapper.java b/student-service/src/main/java/dev/talha/sis/student/mapper/CourseMapper.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..f9e756ab3fb0c525c08fc9c1428f862936c149e8
+--- /dev/null
++++ b/student-service/src/main/java/dev/talha/sis/student/mapper/CourseMapper.java
+@@ -0,0 +1,33 @@
++package dev.talha.sis.student.mapper;
++
++import dev.talha.sis.student.dto.CourseDto;
++import dev.talha.sis.student.entity.Course;
++import org.springframework.stereotype.Component;
++
++@Component
++public class CourseMapper {
++
++    public CourseDto toDto(Course c) {
++        return CourseDto.builder()
++                .id(c.getId())
++                .code(c.getCode())
++                .name(c.getName())
++                .credit(c.getCredit())
++                .build();
++    }
++
++    public Course toEntity(CourseDto dto) {
++        return Course.builder()
++                .id(dto.id())
++                .code(dto.code())
++                .name(dto.name())
++                .credit(dto.credit())
++                .build();
++    }
++
++    public void updateEntity(CourseDto dto, Course target) {
++        target.setCode(dto.code());
++        target.setName(dto.name());
++        target.setCredit(dto.credit());
++    }
++}
+diff --git a/student-service/src/main/java/dev/talha/sis/student/mapper/EnrollmentMapper.java b/student-service/src/main/java/dev/talha/sis/student/mapper/EnrollmentMapper.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..666c573573b74548502f1a7b84d9488160af8433
+--- /dev/null
++++ b/student-service/src/main/java/dev/talha/sis/student/mapper/EnrollmentMapper.java
+@@ -0,0 +1,27 @@
++package dev.talha.sis.student.mapper;
++
++import dev.talha.sis.student.dto.EnrollmentDto;
++import dev.talha.sis.student.entity.Course;
++import dev.talha.sis.student.entity.Enrollment;
++import dev.talha.sis.student.entity.Student;
++import org.springframework.stereotype.Component;
++
++@Component
++public class EnrollmentMapper {
++
++    public EnrollmentDto toDto(Enrollment enrollment) {
++        return EnrollmentDto.builder()
++                .studentId(enrollment.getId().getStudentId())
++                .courseId(enrollment.getId().getCourseId())
++                .semester(enrollment.getId().getSemester())
++                .build();
++    }
++
++    public Enrollment toEntity(Student student, Course course, String semester) {
++        return Enrollment.builder()
++                .student(student)
++                .course(course)
++                .semester(semester)
++                .build();
++    }
++}
+diff --git a/student-service/src/main/java/dev/talha/sis/student/mapper/InstructorMapper.java b/student-service/src/main/java/dev/talha/sis/student/mapper/InstructorMapper.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..65015f4fa9d1ae864510853ca352d372b64eca6c
+--- /dev/null
++++ b/student-service/src/main/java/dev/talha/sis/student/mapper/InstructorMapper.java
+@@ -0,0 +1,33 @@
++package dev.talha.sis.student.mapper;
++
++import dev.talha.sis.student.dto.InstructorDto;
++import dev.talha.sis.student.entity.Instructor;
++import org.springframework.stereotype.Component;
++
++@Component
++public class InstructorMapper {
++
++    public InstructorDto toDto(Instructor instructor) {
++        return InstructorDto.builder()
++                .id(instructor.getId())
++                .firstName(instructor.getFirstName())
++                .lastName(instructor.getLastName())
++                .email(instructor.getEmail())
++                .build();
++    }
++
++    public Instructor toEntity(InstructorDto dto) {
++        return Instructor.builder()
++                .id(dto.id())
++                .firstName(dto.firstName())
++                .lastName(dto.lastName())
++                .email(dto.email())
++                .build();
++    }
++
++    public void updateEntity(InstructorDto dto, Instructor target) {
++        target.setFirstName(dto.firstName());
++        target.setLastName(dto.lastName());
++        target.setEmail(dto.email());
++    }
++}
+diff --git a/student-service/src/main/java/dev/talha/sis/student/mapper/SectionMapper.java b/student-service/src/main/java/dev/talha/sis/student/mapper/SectionMapper.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..b642b185916de266a386e21195d5c4d488014c6d
+--- /dev/null
++++ b/student-service/src/main/java/dev/talha/sis/student/mapper/SectionMapper.java
+@@ -0,0 +1,41 @@
++package dev.talha.sis.student.mapper;
++
++import dev.talha.sis.student.dto.SectionDto;
++import dev.talha.sis.student.entity.Course;
++import dev.talha.sis.student.entity.Instructor;
++import dev.talha.sis.student.entity.Section;
++import org.springframework.stereotype.Component;
++
++@Component
++public class SectionMapper {
++
++    public SectionDto toDto(Section section) {
++        return SectionDto.builder()
++                .id(section.getId())
++                .courseId(section.getCourse().getId())
++                .instructorId(section.getInstructor() != null ? section.getInstructor().getId() : null)
++                .semester(section.getSemester())
++                .capacity(section.getCapacity())
++                .schedule(section.getSchedule())
++                .build();
++    }
++
++    public Section toEntity(SectionDto dto, Course course, Instructor instructor) {
++        return Section.builder()
++                .id(dto.id())
++                .course(course)
++                .instructor(instructor)
++                .semester(dto.semester())
++                .capacity(dto.capacity())
++                .schedule(dto.schedule())
++                .build();
++    }
++
++    public void updateEntity(SectionDto dto, Section target, Course course, Instructor instructor) {
++        target.setCourse(course);
++        target.setInstructor(instructor);
++        target.setSemester(dto.semester());
++        target.setCapacity(dto.capacity());
++        target.setSchedule(dto.schedule());
++    }
++}
+diff --git a/student-service/src/main/java/dev/talha/sis/student/mapper/StudentMapper.java b/student-service/src/main/java/dev/talha/sis/student/mapper/StudentMapper.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..f0280a86272ba46d27666d3f48728f111bbd137c
+--- /dev/null
++++ b/student-service/src/main/java/dev/talha/sis/student/mapper/StudentMapper.java
+@@ -0,0 +1,36 @@
++package dev.talha.sis.student.mapper;
++
++import dev.talha.sis.student.dto.StudentDto;
++import dev.talha.sis.student.entity.Student;
++import org.springframework.stereotype.Component;
++
++@Component
++public class StudentMapper {
++
++    public StudentDto toDto(Student s) {
++        return StudentDto.builder()
++                .id(s.getId())
++                .firstName(s.getFirstName())
++                .lastName(s.getLastName())
++                .email(s.getEmail())
++                .birthDate(s.getBirthDate())
++                .build();
++    }
++
++    public Student toEntity(StudentDto d) {
++        return Student.builder()
++                .id(d.id())
++                .firstName(d.firstName())
++                .lastName(d.lastName())
++                .email(d.email())
++                .birthDate(d.birthDate())
++                .build();
++    }
++
++    public void updateEntity(StudentDto d, Student target) {
++        target.setFirstName(d.firstName());
++        target.setLastName(d.lastName());
++        target.setEmail(d.email());
++        target.setBirthDate(d.birthDate());
++    }
++}
+diff --git a/student-service/src/main/java/dev/talha/sis/student/repo/StudentRepository.java b/student-service/src/main/java/dev/talha/sis/student/repo/StudentRepository.java
+index d140bd82d098d88aff2c7f7688880a06e9088fc7..035af3b0b634758bb590a334cd6964b6d56b9b42 100644
+--- a/student-service/src/main/java/dev/talha/sis/student/repo/StudentRepository.java
++++ b/student-service/src/main/java/dev/talha/sis/student/repo/StudentRepository.java
+@@ -1,9 +1,10 @@
+ package dev.talha.sis.student.repo;
+ 
+ import dev.talha.sis.student.entity.Student;
+ import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+ import java.util.Optional;
+ 
+-public interface StudentRepository extends JpaRepository<Student, Long> {
++public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpecificationExecutor<Student> {
+     Optional<Student> findByEmail(String email);
+ }
+diff --git a/student-service/src/main/java/dev/talha/sis/student/repo/StudentSpecifications.java b/student-service/src/main/java/dev/talha/sis/student/repo/StudentSpecifications.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..9cf147ff4504ad4946aaadd6146eb13e80be6ac7
+--- /dev/null
++++ b/student-service/src/main/java/dev/talha/sis/student/repo/StudentSpecifications.java
+@@ -0,0 +1,60 @@
++package dev.talha.sis.student.repo;
++
++import dev.talha.sis.student.dto.StudentFilter;
++import dev.talha.sis.student.entity.Student;
++import org.springframework.data.jpa.domain.Specification;
++import org.springframework.util.StringUtils;
++
++import java.time.LocalDate;
++
++public final class StudentSpecifications {
++
++    private StudentSpecifications() {
++    }
++
++    public static Specification<Student> fromFilter(StudentFilter filter) {
++        Specification<Student> spec = Specification.where(null);
++
++        if (filter == null) {
++            return spec;
++        }
++
++        if (StringUtils.hasText(filter.getFirstName())) {
++            spec = spec.and(likeIgnoreCase("firstName", filter.getFirstName()));
++        }
++
++        if (StringUtils.hasText(filter.getLastName())) {
++            spec = spec.and(likeIgnoreCase("lastName", filter.getLastName()));
++        }
++
++        if (StringUtils.hasText(filter.getEmail())) {
++            spec = spec.and(equalsIgnoreCase("email", filter.getEmail()));
++        }
++
++        if (filter.getBirthDateFrom() != null) {
++            spec = spec.and(greaterThanOrEqualTo("birthDate", filter.getBirthDateFrom()));
++        }
++
++        if (filter.getBirthDateTo() != null) {
++            spec = spec.and(lessThanOrEqualTo("birthDate", filter.getBirthDateTo()));
++        }
++
++        return spec;
++    }
++
++    private static Specification<Student> likeIgnoreCase(String attribute, String value) {
++        return (root, query, cb) -> cb.like(cb.lower(root.get(attribute)), "%" + value.toLowerCase() + "%");
++    }
++
++    private static Specification<Student> equalsIgnoreCase(String attribute, String value) {
++        return (root, query, cb) -> cb.equal(cb.lower(root.get(attribute)), value.toLowerCase());
++    }
++
++    private static Specification<Student> greaterThanOrEqualTo(String attribute, LocalDate value) {
++        return (root, query, cb) -> cb.greaterThanOrEqualTo(root.get(attribute), value);
++    }
++
++    private static Specification<Student> lessThanOrEqualTo(String attribute, LocalDate value) {
++        return (root, query, cb) -> cb.lessThanOrEqualTo(root.get(attribute), value);
++    }
++}
+diff --git a/student-service/src/main/java/dev/talha/sis/student/service/CourseService.java b/student-service/src/main/java/dev/talha/sis/student/service/CourseService.java
+index 51dd1e218e649653d6a0b00b46b8ba9c8f297d7a..b091b0fac9863a176202e52e38bd8035a004ce96 100644
+--- a/student-service/src/main/java/dev/talha/sis/student/service/CourseService.java
++++ b/student-service/src/main/java/dev/talha/sis/student/service/CourseService.java
+@@ -1,28 +1,36 @@
+-// CourseService.java
+ package dev.talha.sis.student.service;
+ 
+ import dev.talha.sis.student.dto.CourseDto;
+ import dev.talha.sis.student.entity.Course;
+ import dev.talha.sis.student.exception.ConflictException;
++import dev.talha.sis.student.mapper.CourseMapper;
+ import dev.talha.sis.student.repo.CourseRepository;
+ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.Pageable;
+ import org.springframework.stereotype.Service;
+ import org.springframework.transaction.annotation.Transactional;
+ 
+ @Service
+ public class CourseService {
+     private final CourseRepository repo;
++    private final CourseMapper mapper;
+ 
+-    public CourseService(CourseRepository repo){ this.repo=repo; }
++    public CourseService(CourseRepository repo, CourseMapper mapper) {
++        this.repo = repo;
++        this.mapper = mapper;
++    }
+ 
+     @Transactional
+-    public Course create(CourseDto dto){
+-        if (repo.existsByCode(dto.code())) throw new ConflictException("code already exists");
+-        Course c = new Course();
+-        c.setCode(dto.code()); c.setName(dto.name()); c.setCredit(dto.credit());
+-        return repo.save(c);
++    public CourseDto create(CourseDto dto) {
++        if (repo.existsByCode(dto.code())) {
++            throw new ConflictException("course_code_exists");
++        }
++        Course course = mapper.toEntity(dto);
++        course = repo.save(course);
++        return mapper.toDto(course);
+     }
+ 
+-    public Page<Course> list(Pageable pageable){ return repo.findAll(pageable); }
++    public Page<CourseDto> list(Pageable pageable) {
++        return repo.findAll(pageable).map(mapper::toDto);
++    }
+ }
+diff --git a/student-service/src/main/java/dev/talha/sis/student/service/EnrollmentService.java b/student-service/src/main/java/dev/talha/sis/student/service/EnrollmentService.java
+index fd669bc60ae37b1899c2cfd90a190990babd3993..72a774d4e5209bfd9d6dec6158152971e8d67303 100644
+--- a/student-service/src/main/java/dev/talha/sis/student/service/EnrollmentService.java
++++ b/student-service/src/main/java/dev/talha/sis/student/service/EnrollmentService.java
+@@ -1,63 +1,67 @@
+ package dev.talha.sis.student.service;
+ 
+ import dev.talha.sis.student.dto.EnrollmentDto;
+ import dev.talha.sis.student.entity.Course;
+ import dev.talha.sis.student.entity.Enrollment;
+ import dev.talha.sis.student.entity.Student;
+ import dev.talha.sis.student.exception.NotFoundException;
++import dev.talha.sis.student.mapper.EnrollmentMapper;
+ import dev.talha.sis.student.repo.CourseRepository;
+ import dev.talha.sis.student.repo.EnrollmentRepository;
+ import dev.talha.sis.student.repo.StudentRepository;
+ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.Pageable;
+ import org.springframework.stereotype.Service;
+ import org.springframework.transaction.annotation.Transactional;
+-import dev.talha.sis.student.exception.NotFoundException;
+ 
+ @Service
+ public class EnrollmentService {
+ 
+     private final EnrollmentRepository enrollRepo;
+     private final StudentRepository  studentRepo;
+     private final CourseRepository   courseRepo;
++    private final EnrollmentMapper mapper;
+ 
+     public EnrollmentService(EnrollmentRepository enrollRepo,
+                              StudentRepository studentRepo,
+-                             CourseRepository courseRepo) {
++                             CourseRepository courseRepo,
++                             EnrollmentMapper mapper) {
+         this.enrollRepo  = enrollRepo;
+         this.studentRepo = studentRepo;
+         this.courseRepo  = courseRepo;
++        this.mapper      = mapper;
+     }
+ 
+     @Transactional
+-    public Enrollment enroll(EnrollmentDto dto) {
++    public EnrollmentDto enroll(EnrollmentDto dto) {
+         Student s = studentRepo.findById(dto.studentId())
+                 .orElseThrow(() -> new NotFoundException("student_not_found"));
+ 
+         Course c = courseRepo.findById(dto.courseId())
+                 .orElseThrow(() -> new NotFoundException("course_not_found"));
+ 
+-        Enrollment e = new Enrollment(s, c, dto.semester());
+-        return enrollRepo.save(e);
++        Enrollment e = mapper.toEntity(s, c, dto.semester());
++        e = enrollRepo.save(e);
++        return mapper.toDto(e);
+     }
+ 
+-    public Page<Enrollment> listByStudent(Long studentId, Pageable pageable) {
+-        return enrollRepo.findByStudent_Id(studentId, pageable);
++    public Page<EnrollmentDto> listByStudent(Long studentId, Pageable pageable) {
++        return enrollRepo.findByStudent_Id(studentId, pageable).map(mapper::toDto);
+     }
+ 
+-    public Page<Enrollment> listByCourse(Long courseId, Pageable pageable) {
+-        return enrollRepo.findByCourse_Id(courseId, pageable);
++    public Page<EnrollmentDto> listByCourse(Long courseId, Pageable pageable) {
++        return enrollRepo.findByCourse_Id(courseId, pageable).map(mapper::toDto);
+     }
+ 
+-      @Transactional
++    @Transactional
+     public void delete(Long studentId, Long courseId, String semester) {
+         boolean exists = enrollRepo.existsByIdStudentIdAndIdCourseIdAndIdSemester(studentId, courseId, semester);
+         if (!exists) {
+             throw new NotFoundException("enrollment_not_found");
+         }
+         enrollRepo.deleteByIdStudentIdAndIdCourseIdAndIdSemester(studentId, courseId, semester);
+     }
+ 
+ 
+ 
+ }
+diff --git a/student-service/src/main/java/dev/talha/sis/student/service/InstructorService.java b/student-service/src/main/java/dev/talha/sis/student/service/InstructorService.java
+index ae975ca255545591a4f6704cdd092266b35e82e1..84025d9353a12f20491a995f0d6b50838e578b67 100644
+--- a/student-service/src/main/java/dev/talha/sis/student/service/InstructorService.java
++++ b/student-service/src/main/java/dev/talha/sis/student/service/InstructorService.java
+@@ -1,30 +1,33 @@
+ package dev.talha.sis.student.service;
+ 
+ import dev.talha.sis.student.dto.InstructorDto;
+ import dev.talha.sis.student.entity.Instructor;
+ import dev.talha.sis.student.exception.ConflictException;
+ import dev.talha.sis.student.exception.NotFoundException;
++import dev.talha.sis.student.mapper.InstructorMapper;
+ import dev.talha.sis.student.repo.InstructorRepository;
+ import lombok.RequiredArgsConstructor;
+-import org.springframework.stereotype.Service;
+ import org.springframework.data.domain.*;
++import org.springframework.stereotype.Service;
+ 
+-@Service @RequiredArgsConstructor
++@Service
++@RequiredArgsConstructor
+ public class InstructorService {
+     private final InstructorRepository repo;
++    private final InstructorMapper mapper;
+ 
+     public InstructorDto create(InstructorDto dto){
+         if (repo.existsByEmail(dto.email())) throw new ConflictException("email_exists");
+-        var e = repo.save(Instructor.builder()
+-                .firstName(dto.firstName()).lastName(dto.lastName()).email(dto.email()).build());
+-        return new InstructorDto(e.getId(), e.getFirstName(), e.getLastName(), e.getEmail());
++        Instructor instructor = mapper.toEntity(dto);
++        instructor = repo.save(instructor);
++        return mapper.toDto(instructor);
+     }
+ 
+     public Page<InstructorDto> list(Pageable p){
+-        return repo.findAll(p).map(e -> new InstructorDto(e.getId(), e.getFirstName(), e.getLastName(), e.getEmail()));
++        return repo.findAll(p).map(mapper::toDto);
+     }
+ 
+     public Instructor getOrThrow(Long id){
+         return repo.findById(id).orElseThrow(() -> new NotFoundException("instructor_not_found"));
+     }
+ }
+diff --git a/student-service/src/main/java/dev/talha/sis/student/service/SectionService.java b/student-service/src/main/java/dev/talha/sis/student/service/SectionService.java
+index 22a13ddcb0f5d0ed81d18f4fc61d8b492a487b37..a6cd17c3be88b3b35b57886874e69bef76709df4 100644
+--- a/student-service/src/main/java/dev/talha/sis/student/service/SectionService.java
++++ b/student-service/src/main/java/dev/talha/sis/student/service/SectionService.java
+@@ -1,48 +1,39 @@
+ package dev.talha.sis.student.service;
+ 
+ import dev.talha.sis.student.dto.SectionDto;
+ import dev.talha.sis.student.entity.Section;
+ import dev.talha.sis.student.exception.ConflictException;
+ import dev.talha.sis.student.exception.NotFoundException;
++import dev.talha.sis.student.mapper.SectionMapper;
+ import dev.talha.sis.student.repo.*;
+ import lombok.RequiredArgsConstructor;
+-import org.springframework.stereotype.Service;
+ import org.springframework.data.domain.*;
++import org.springframework.stereotype.Service;
+ 
+-@Service @RequiredArgsConstructor
++@Service
++@RequiredArgsConstructor
+ public class SectionService {
+     private final SectionRepository sectionRepo;
+     private final CourseRepository courseRepo;
+     private final InstructorService instructorService; // getOrThrow için
++    private final SectionMapper mapper;
+ 
+     public SectionDto create(SectionDto dto){
+         var course = courseRepo.findById(dto.courseId())
+                 .orElseThrow(() -> new NotFoundException("course_not_found"));
+         var instructor = dto.instructorId() == null ? null : instructorService.getOrThrow(dto.instructorId());
+ 
+         if (instructor != null &&
+                 sectionRepo.existsByCourse_IdAndSemesterAndInstructor_Id(course.getId(), dto.semester(), instructor.getId())) {
+             throw new ConflictException("section_already_exists_for_instructor");
+         }
+ 
+-        var s = Section.builder()
+-                .course(course)
+-                .instructor(instructor)
+-                .semester(dto.semester())
+-                .capacity(dto.capacity())
+-                .schedule(dto.schedule())
+-                .build();
+-
+-        s = sectionRepo.save(s);
+-        return new SectionDto(s.getId(), course.getId(), instructor!=null? instructor.getId():null,
+-                s.getSemester(), s.getCapacity(), s.getSchedule());
++        Section section = mapper.toEntity(dto, course, instructor);
++        section = sectionRepo.save(section);
++        return mapper.toDto(section);
+     }
+ 
+     public Page<SectionDto> list(Pageable p){
+-        return sectionRepo.findAll(p).map(s ->
+-                new SectionDto(s.getId(),
+-                        s.getCourse().getId(),
+-                        s.getInstructor()!=null ? s.getInstructor().getId() : null,
+-                        s.getSemester(), s.getCapacity(), s.getSchedule()));
++        return sectionRepo.findAll(p).map(mapper::toDto);
+     }
+ }
+diff --git a/student-service/src/main/java/dev/talha/sis/student/service/StudentService.java b/student-service/src/main/java/dev/talha/sis/student/service/StudentService.java
+index 137ac596269c721ef8d2ee9d788078a5cd09438c..068eaa587a2a6de432388b190154384eff34bdb1 100644
+--- a/student-service/src/main/java/dev/talha/sis/student/service/StudentService.java
++++ b/student-service/src/main/java/dev/talha/sis/student/service/StudentService.java
+@@ -1,74 +1,58 @@
+ package dev.talha.sis.student.service;
+ 
+ import dev.talha.sis.student.dto.StudentDto;
++import dev.talha.sis.student.dto.StudentFilter;
+ import dev.talha.sis.student.entity.Student;
+ import dev.talha.sis.student.exception.ConflictException;
+ import dev.talha.sis.student.exception.NotFoundException;
++import dev.talha.sis.student.mapper.StudentMapper;
+ import dev.talha.sis.student.repo.StudentRepository;
++import dev.talha.sis.student.repo.StudentSpecifications;
+ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.Pageable;
++import org.springframework.data.jpa.domain.Specification;
+ import org.springframework.stereotype.Service;
+ 
+ @Service
+ public class StudentService {
+ 
+     private final StudentRepository repo;
++    private final StudentMapper mapper;
+ 
+-    public StudentService(StudentRepository repo) {
++    public StudentService(StudentRepository repo, StudentMapper mapper) {
+         this.repo = repo;
++        this.mapper = mapper;
+     }
+ 
+     public StudentDto create(StudentDto dto) {
+         repo.findByEmail(dto.email()).ifPresent(s -> {
+             throw new ConflictException("email_exists");
+         });
+-        Student s = toEntity(dto);
++        Student s = mapper.toEntity(dto);
+         s = repo.save(s);
+-        return toDto(s);
++        return mapper.toDto(s);
+     }
+ 
+-    public Page<StudentDto> list(Pageable p) {
+-        return repo.findAll(p).map(this::toDto);
++    public Page<StudentDto> list(StudentFilter filter, Pageable p) {
++        Specification<Student> spec = StudentSpecifications.fromFilter(filter);
++        return repo.findAll(spec, p).map(mapper::toDto);
+     }
+ 
+     public StudentDto get(Long id) {
+-        return toDto(
++        return mapper.toDto(
+                 repo.findById(id)
+                         .orElseThrow(() -> new NotFoundException("student_not_found"))
+         );
+     }
+ 
+     public StudentDto update(Long id, StudentDto dto) {
+         Student s = repo.findById(id)
+                 .orElseThrow(() -> new NotFoundException("student_not_found"));
+-        s.setFirstName(dto.firstName());
+-        s.setLastName(dto.lastName());
+-        s.setEmail(dto.email());
+-        s.setBirthDate(dto.birthDate());
+-        return toDto(repo.save(s));
++        mapper.updateEntity(dto, s);
++        return mapper.toDto(repo.save(s));
+     }
+ 
+     public void delete(Long id) {
+         repo.deleteById(id);
+     }
+-
+-    private StudentDto toDto(Student s) {
+-        return new StudentDto(
+-                s.getId(),
+-                s.getFirstName(),
+-                s.getLastName(),
+-                s.getEmail(),
+-                s.getBirthDate()
+-        );
+-    }
+-
+-    private Student toEntity(StudentDto d) {
+-        Student s = new Student();
+-        s.setId(d.id());
+-        s.setFirstName(d.firstName());
+-        s.setLastName(d.lastName());
+-        s.setEmail(d.email());
+-        s.setBirthDate(d.birthDate());
+-        return s;
+-    }
+ }
+diff --git a/student-service/src/main/java/dev/talha/sis/student/web/CourseController.java b/student-service/src/main/java/dev/talha/sis/student/web/CourseController.java
+index 094a1e10e1ea8e45164f80581c9d4fac2e3b2e73..490b3f5c655c5574aed51418e1fbac07f885c3ff 100644
+--- a/student-service/src/main/java/dev/talha/sis/student/web/CourseController.java
++++ b/student-service/src/main/java/dev/talha/sis/student/web/CourseController.java
+@@ -1,32 +1,32 @@
+ package dev.talha.sis.student.web;
+ 
+ import dev.talha.sis.student.dto.CourseDto;
+-import dev.talha.sis.student.entity.Course;
+ import dev.talha.sis.student.service.CourseService;
+ import jakarta.validation.Valid;
+ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.Pageable;
++import org.springframework.data.web.PageableDefault;
+ import org.springframework.http.HttpStatus;
+ import org.springframework.web.bind.annotation.*;
+ 
+ @RestController
+ @RequestMapping("/api/v1/courses")
+ public class CourseController {
+ 
+     private final CourseService service;
+ 
+     public CourseController(CourseService service) {
+         this.service = service;
+     }
+ 
+     @PostMapping
+     @ResponseStatus(HttpStatus.CREATED)
+-    public Course create(@RequestBody @Valid CourseDto dto) {
++    public CourseDto create(@RequestBody @Valid CourseDto dto) {
+         return service.create(dto);
+     }
+ 
+     @GetMapping
+-    public Page<Course> list(Pageable pageable) {
++    public Page<CourseDto> list(@PageableDefault(size = 20) Pageable pageable) {
+         return service.list(pageable);
+     }
+ }
+diff --git a/student-service/src/main/java/dev/talha/sis/student/web/EnrollmentController.java b/student-service/src/main/java/dev/talha/sis/student/web/EnrollmentController.java
+index 6641076e8af7bf6310e2df4607898d4b06aa397d..9d9010f576f8e819515fed0beea628f3ef774ddb 100644
+--- a/student-service/src/main/java/dev/talha/sis/student/web/EnrollmentController.java
++++ b/student-service/src/main/java/dev/talha/sis/student/web/EnrollmentController.java
+@@ -1,54 +1,51 @@
+ package dev.talha.sis.student.web;
+ 
+ import dev.talha.sis.student.dto.EnrollmentDto;
+-import dev.talha.sis.student.entity.Enrollment;
+ import dev.talha.sis.student.service.EnrollmentService;
+ import jakarta.validation.Valid;
+ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.Pageable;
++import org.springframework.data.web.PageableDefault;
+ import org.springframework.http.HttpStatus;
+ import org.springframework.web.bind.annotation.*;
+-import org.springframework.web.bind.annotation.DeleteMapping;
+-import org.springframework.web.bind.annotation.RequestParam;
+-import org.springframework.http.HttpStatus;
+ 
+ @RestController
+ @RequestMapping("/api/v1/enrollments")
+ public class EnrollmentController {
+ 
+     private final EnrollmentService service;
+ 
+     public EnrollmentController(EnrollmentService service) {
+         this.service = service;
+     }
+ 
+     @PostMapping
+     @ResponseStatus(HttpStatus.CREATED)
+-    public Enrollment enroll(@RequestBody @Valid EnrollmentDto dto) {
++    public EnrollmentDto enroll(@RequestBody @Valid EnrollmentDto dto) {
+         return service.enroll(dto);
+     }
+ 
+     @GetMapping("/by-student/{studentId}")
+-    public Page<Enrollment> listByStudent(@PathVariable("studentId") Long studentId,
+-                                          Pageable pageable) {
++    public Page<EnrollmentDto> listByStudent(@PathVariable("studentId") Long studentId,
++                                          @PageableDefault(size = 20) Pageable pageable) {
+         return service.listByStudent(studentId, pageable);
+     }
+ 
+     @GetMapping("/by-course/{courseId}")
+-    public Page<Enrollment> listByCourse(@PathVariable("courseId") Long courseId,
+-                                         Pageable pageable) {
++    public Page<EnrollmentDto> listByCourse(@PathVariable("courseId") Long courseId,
++                                         @PageableDefault(size = 20) Pageable pageable) {
+         return service.listByCourse(courseId, pageable);
+     }
+ 
+     @DeleteMapping
+     @ResponseStatus(HttpStatus.NO_CONTENT)
+     public void delete(
+             @RequestParam("studentId") Long studentId,
+             @RequestParam("courseId")  Long courseId,
+             @RequestParam("semester") String semester
+     ) {
+         service.delete(studentId, courseId, semester);
+     }
+ 
+ 
+ }
+diff --git a/student-service/src/main/java/dev/talha/sis/student/web/StudentController.java b/student-service/src/main/java/dev/talha/sis/student/web/StudentController.java
+index 20b4b75de4223c097e51ce9ca4b78e4af555a44f..120169c993d8bf1ad5486734ea4fed41f7035c80 100644
+--- a/student-service/src/main/java/dev/talha/sis/student/web/StudentController.java
++++ b/student-service/src/main/java/dev/talha/sis/student/web/StudentController.java
+@@ -1,32 +1,33 @@
+ package dev.talha.sis.student.web;
+ 
+ import dev.talha.sis.student.dto.StudentDto;
++import dev.talha.sis.student.dto.StudentFilter;
+ import dev.talha.sis.student.service.StudentService;
+ import jakarta.validation.Valid;
+ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.Pageable;
+ import org.springframework.data.web.PageableDefault;
+ import org.springframework.http.HttpStatus;
+ import org.springframework.web.bind.annotation.*;
+ 
+ @RestController
+ @RequestMapping("/api/v1/students")
+ public class StudentController {
+     private final StudentService service;
+     public StudentController(StudentService service){ this.service = service; }
+ 
+     @PostMapping @ResponseStatus(HttpStatus.CREATED)
+     public StudentDto create(@Valid @RequestBody StudentDto dto){ return service.create(dto); }
+ 
+     @GetMapping
+-    public Page<StudentDto> list(@PageableDefault(size=20) Pageable p){ return service.list(p); }
++    public Page<StudentDto> list(@ModelAttribute StudentFilter filter, @PageableDefault(size=20) Pageable p){ return service.list(filter, p); }
+ 
+     @GetMapping("/{id}")
+     public StudentDto get(@PathVariable Long id){ return service.get(id); }
+ 
+     @PutMapping("/{id}")
+     public StudentDto update(@PathVariable Long id, @Valid @RequestBody StudentDto dto){ return service.update(id, dto); }
+ 
+     @DeleteMapping("/{id}") @ResponseStatus(HttpStatus.NO_CONTENT)
+     public void delete(@PathVariable Long id){ service.delete(id); }
+ }
+diff --git a/student-service/src/main/resources/application.yml b/student-service/src/main/resources/application.yml
+index 5011efe8c4a6f92812cf7fe17732b14efa79000b..19135146a106b4e41a0b40032620ca37fb3ce0c7 100644
+--- a/student-service/src/main/resources/application.yml
++++ b/student-service/src/main/resources/application.yml
+@@ -8,40 +8,46 @@ error:
+ 
+ 
+ spring:
+   datasource:
+     url: jdbc:postgresql://postgres:5432/sis_student
+     username: student
+     password: student
+     driver-class-name: org.postgresql.Driver
+ 
+   jpa:
+     hibernate:
+       ddl-auto: validate   # Şemayı Flyway yönetir
+     open-in-view: false
+     properties:
+       hibernate.format_sql: true
+   flyway:
+     enabled: true
+     locations: classpath:db/migration
+ 
+   rabbitmq:
+     host: rabbitmq
+     port: 5672
+     username: guest
+     password: guest
+ 
++  data:
++    web:
++      pageable:
++        default-page-size: 20
++        max-page-size: 100
++
+ management:
+   endpoints:
+     web:
+       exposure:
+         include: "health,info"
+   endpoint:
+     health:
+       show-details: "never"
+ 
+ logging:
+   level:
+     org.hibernate.SQL: DEBUG
+     org.springframework.amqp: info
+     org.springframework.security: DEBUG
+-    org.springframework.web: DEBUG
+\ No newline at end of file
++    org.springframework.web: DEBUG
+diff --git a/student-service/src/test/java/dev/talha/sis/student/repo/StudentSpecificationsTest.java b/student-service/src/test/java/dev/talha/sis/student/repo/StudentSpecificationsTest.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..8022026190cc3dbdcfe7bba804e25ecc6e7898cb
+--- /dev/null
++++ b/student-service/src/test/java/dev/talha/sis/student/repo/StudentSpecificationsTest.java
+@@ -0,0 +1,77 @@
++package dev.talha.sis.student.repo;
++
++import dev.talha.sis.student.dto.StudentFilter;
++import dev.talha.sis.student.entity.Student;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
++import org.springframework.data.domain.Page;
++import org.springframework.data.domain.PageRequest;
++import org.springframework.data.jpa.domain.Specification;
++
++import java.time.LocalDate;
++
++import static org.assertj.core.api.Assertions.assertThat;
++
++@DataJpaTest
++class StudentSpecificationsTest {
++
++    @Autowired
++    StudentRepository repository;
++
++    @Test
++    void filtersByFirstNameAndDateRange() {
++        Student alice = Student.builder()
++                .firstName("Alice")
++                .lastName("Johnson")
++                .email("alice@example.com")
++                .birthDate(LocalDate.of(2000, 1, 10))
++                .build();
++        Student bob = Student.builder()
++                .firstName("Bob")
++                .lastName("Smith")
++                .email("bob@example.com")
++                .birthDate(LocalDate.of(1995, 5, 20))
++                .build();
++        repository.save(alice);
++        repository.save(bob);
++
++        StudentFilter filter = StudentFilter.builder()
++                .firstName("ali")
++                .birthDateFrom(LocalDate.of(1999, 1, 1))
++                .birthDateTo(LocalDate.of(2001, 12, 31))
++                .build();
++
++        Specification<Student> spec = StudentSpecifications.fromFilter(filter);
++
++        Page<Student> result = repository.findAll(spec, PageRequest.of(0, 10));
++
++        assertThat(result.getContent())
++                .extracting(Student::getEmail)
++                .containsExactly("alice@example.com");
++    }
++
++    @Test
++    void returnsAllWhenFilterEmpty() {
++        Student alice = Student.builder()
++                .firstName("Alice")
++                .lastName("Johnson")
++                .email("alice2@example.com")
++                .birthDate(LocalDate.of(2001, 2, 15))
++                .build();
++        Student bob = Student.builder()
++                .firstName("Bob")
++                .lastName("Brown")
++                .email("bob2@example.com")
++                .birthDate(LocalDate.of(1999, 7, 30))
++                .build();
++        repository.save(alice);
++        repository.save(bob);
++
++        Specification<Student> spec = StudentSpecifications.fromFilter(new StudentFilter());
++
++        Page<Student> result = repository.findAll(spec, PageRequest.of(0, 10));
++
++        assertThat(result.getTotalElements()).isEqualTo(2);
++    }
++}
+diff --git a/student-service/src/test/java/dev/talha/sis/student/web/CourseControllerPaginationTest.java b/student-service/src/test/java/dev/talha/sis/student/web/CourseControllerPaginationTest.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..7be1348d2e52fc2ee2db2cd11667ce80331df4c0
+--- /dev/null
++++ b/student-service/src/test/java/dev/talha/sis/student/web/CourseControllerPaginationTest.java
+@@ -0,0 +1,61 @@
++package dev.talha.sis.student.web;
++
++import dev.talha.sis.student.service.CourseService;
++import org.junit.jupiter.api.Test;
++import org.mockito.ArgumentCaptor;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
++import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
++import org.springframework.boot.test.mock.mockito.MockBean;
++import org.springframework.data.domain.Page;
++import org.springframework.data.domain.PageRequest;
++import org.springframework.data.domain.Pageable;
++import org.springframework.test.web.servlet.MockMvc;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.Mockito.verify;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
++
++@WebMvcTest(CourseController.class)
++@AutoConfigureMockMvc(addFilters = false)
++class CourseControllerPaginationTest {
++
++    @Autowired
++    MockMvc mockMvc;
++
++    @MockBean
++    CourseService service;
++
++    @Test
++    void usesDefaultPageSizeWhenNotProvided() throws Exception {
++        when(service.list(any(Pageable.class))).thenReturn(Page.empty(PageRequest.of(0, 20)));
++
++        mockMvc.perform(get("/api/v1/courses"))
++                .andExpect(status().isOk());
++
++        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
++        verify(service).list(captor.capture());
++
++        Pageable pageable = captor.getValue();
++        assertThat(pageable.getPageNumber()).isEqualTo(0);
++        assertThat(pageable.getPageSize()).isEqualTo(20);
++    }
++
++    @Test
++    void forwardsExplicitPaginationParameters() throws Exception {
++        when(service.list(any(Pageable.class))).thenReturn(Page.empty(PageRequest.of(2, 15)));
++
++        mockMvc.perform(get("/api/v1/courses").param("page", "2").param("size", "15"))
++                .andExpect(status().isOk());
++
++        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
++        verify(service).list(captor.capture());
++
++        Pageable pageable = captor.getValue();
++        assertThat(pageable.getPageNumber()).isEqualTo(2);
++        assertThat(pageable.getPageSize()).isEqualTo(15);
++    }
++}
+diff --git a/student-service/src/test/java/dev/talha/sis/student/web/EnrollmentControllerPaginationTest.java b/student-service/src/test/java/dev/talha/sis/student/web/EnrollmentControllerPaginationTest.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..3a3d15e88bcc02fbcdcd0a49fa2a7d2223946665
+--- /dev/null
++++ b/student-service/src/test/java/dev/talha/sis/student/web/EnrollmentControllerPaginationTest.java
+@@ -0,0 +1,67 @@
++package dev.talha.sis.student.web;
++
++import dev.talha.sis.student.service.EnrollmentService;
++import org.junit.jupiter.api.Test;
++import org.mockito.ArgumentCaptor;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
++import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
++import org.springframework.boot.test.mock.mockito.MockBean;
++import org.springframework.data.domain.Page;
++import org.springframework.data.domain.PageRequest;
++import org.springframework.data.domain.Pageable;
++import org.springframework.test.web.servlet.MockMvc;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.ArgumentMatchers.anyLong;
++import static org.mockito.Mockito.verify;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
++
++@WebMvcTest(EnrollmentController.class)
++@AutoConfigureMockMvc(addFilters = false)
++class EnrollmentControllerPaginationTest {
++
++    @Autowired
++    MockMvc mockMvc;
++
++    @MockBean
++    EnrollmentService service;
++
++    @Test
++    void usesDefaultPageSizeWhenListingByStudent() throws Exception {
++        when(service.listByStudent(anyLong(), any(Pageable.class)))
++                .thenReturn(Page.empty(PageRequest.of(0, 20)));
++
++        mockMvc.perform(get("/api/v1/enrollments/by-student/{studentId}", 42))
++                .andExpect(status().isOk());
++
++        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
++        verify(service).listByStudent(eq(42L), captor.capture());
++
++        Pageable pageable = captor.getValue();
++        assertThat(pageable.getPageNumber()).isEqualTo(0);
++        assertThat(pageable.getPageSize()).isEqualTo(20);
++    }
++
++    @Test
++    void forwardsExplicitParametersWhenListingByCourse() throws Exception {
++        when(service.listByCourse(anyLong(), any(Pageable.class)))
++                .thenReturn(Page.empty(PageRequest.of(3, 7)));
++
++        mockMvc.perform(get("/api/v1/enrollments/by-course/{courseId}", 9)
++                        .param("page", "3")
++                        .param("size", "7"))
++                .andExpect(status().isOk());
++
++        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
++        verify(service).listByCourse(eq(9L), captor.capture());
++
++        Pageable pageable = captor.getValue();
++        assertThat(pageable.getPageNumber()).isEqualTo(3);
++        assertThat(pageable.getPageSize()).isEqualTo(7);
++    }
++}
+diff --git a/student-service/src/test/java/dev/talha/sis/student/web/StudentControllerPaginationTest.java b/student-service/src/test/java/dev/talha/sis/student/web/StudentControllerPaginationTest.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..f42d50eea6a97f4ea55bffe4375a8cc5d4fdf9cb
+--- /dev/null
++++ b/student-service/src/test/java/dev/talha/sis/student/web/StudentControllerPaginationTest.java
+@@ -0,0 +1,76 @@
++package dev.talha.sis.student.web;
++
++import dev.talha.sis.student.dto.StudentFilter;
++import dev.talha.sis.student.service.StudentService;
++import org.junit.jupiter.api.Test;
++import org.mockito.ArgumentCaptor;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
++import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
++import org.springframework.boot.test.mock.mockito.MockBean;
++import org.springframework.data.domain.Page;
++import org.springframework.data.domain.PageRequest;
++import org.springframework.data.domain.Pageable;
++import org.springframework.test.web.servlet.MockMvc;
++
++import java.time.LocalDate;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.Mockito.verify;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
++
++@WebMvcTest(StudentController.class)
++@AutoConfigureMockMvc(addFilters = false)
++class StudentControllerPaginationTest {
++
++    @Autowired
++    MockMvc mockMvc;
++
++    @MockBean
++    StudentService service;
++
++    @Test
++    void usesDefaultPageSizeWhenNotProvided() throws Exception {
++        when(service.list(any(StudentFilter.class), any(Pageable.class))).thenReturn(Page.empty(PageRequest.of(0, 20)));
++
++        mockMvc.perform(get("/api/v1/students"))
++                .andExpect(status().isOk());
++
++        ArgumentCaptor<StudentFilter> filterCaptor = ArgumentCaptor.forClass(StudentFilter.class);
++        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
++        verify(service).list(filterCaptor.capture(), captor.capture());
++
++        StudentFilter filter = filterCaptor.getValue();
++        assertThat(filter.getFirstName()).isNull();
++        assertThat(filter.getLastName()).isNull();
++        Pageable pageable = captor.getValue();
++        assertThat(pageable.getPageNumber()).isEqualTo(0);
++        assertThat(pageable.getPageSize()).isEqualTo(20);
++    }
++
++    @Test
++    void forwardsExplicitPaginationParameters() throws Exception {
++        when(service.list(any(StudentFilter.class), any(Pageable.class))).thenReturn(Page.empty(PageRequest.of(1, 5)));
++
++        mockMvc.perform(get("/api/v1/students")
++                        .param("page", "1")
++                        .param("size", "5")
++                        .param("firstName", "Ali")
++                        .param("birthDateFrom", "2000-01-01"))
++                .andExpect(status().isOk());
++
++        ArgumentCaptor<StudentFilter> filterCaptor = ArgumentCaptor.forClass(StudentFilter.class);
++        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
++        verify(service).list(filterCaptor.capture(), captor.capture());
++
++        StudentFilter filter = filterCaptor.getValue();
++        assertThat(filter.getFirstName()).isEqualTo("Ali");
++        assertThat(filter.getBirthDateFrom()).isEqualTo(LocalDate.parse("2000-01-01"));
++        Pageable pageable = captor.getValue();
++        assertThat(pageable.getPageNumber()).isEqualTo(1);
++        assertThat(pageable.getPageSize()).isEqualTo(5);
++    }
++}
+ 
+EOF
+)

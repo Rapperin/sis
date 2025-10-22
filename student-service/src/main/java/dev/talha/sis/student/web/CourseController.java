@@ -1,11 +1,11 @@
 package dev.talha.sis.student.web;
 
 import dev.talha.sis.student.dto.CourseDto;
-import dev.talha.sis.student.entity.Course;
 import dev.talha.sis.student.service.CourseService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,12 +21,12 @@ public class CourseController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Course create(@RequestBody @Valid CourseDto dto) {
+    public CourseDto create(@RequestBody @Valid CourseDto dto) {
         return service.create(dto);
     }
 
     @GetMapping
-    public Page<Course> list(Pageable pageable) {
+    public Page<CourseDto> list(@PageableDefault(size = 20) Pageable pageable) {
         return service.list(pageable);
     }
 }
