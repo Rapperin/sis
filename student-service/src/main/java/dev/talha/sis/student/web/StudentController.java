@@ -1,6 +1,7 @@
 package dev.talha.sis.student.web;
 
 import dev.talha.sis.student.dto.StudentDto;
+import dev.talha.sis.student.dto.StudentFilter;
 import dev.talha.sis.student.service.StudentService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -19,7 +20,7 @@ public class StudentController {
     public StudentDto create(@Valid @RequestBody StudentDto dto){ return service.create(dto); }
 
     @GetMapping
-    public Page<StudentDto> list(@PageableDefault(size=20) Pageable p){ return service.list(p); }
+    public Page<StudentDto> list(@ModelAttribute StudentFilter filter, @PageableDefault(size=20) Pageable p){ return service.list(filter, p); }
 
     @GetMapping("/{id}")
     public StudentDto get(@PathVariable Long id){ return service.get(id); }

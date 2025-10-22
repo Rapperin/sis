@@ -46,4 +46,77 @@ public class Enrollment {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static final class Builder {
+        private EnrollmentId id;
+        private Student student;
+        private Course course;
+        private Long studentId;
+        private Long courseId;
+        private String semester;
+        private String status = "ENROLLED";
+
+        private Builder() {
+        }
+
+        public Builder id(EnrollmentId id) {
+            this.id = id;
+            return this;
+        }
+
+        public Builder student(Student student) {
+            this.student = student;
+            return this;
+        }
+
+        public Builder course(Course course) {
+            this.course = course;
+            return this;
+        }
+
+        public Builder studentId(Long studentId) {
+            this.studentId = studentId;
+            return this;
+        }
+
+        public Builder courseId(Long courseId) {
+            this.courseId = courseId;
+            return this;
+        }
+
+        public Builder semester(String semester) {
+            this.semester = semester;
+            return this;
+        }
+
+        public Builder status(String status) {
+            this.status = status;
+            return this;
+        }
+
+        public Enrollment build() {
+            Enrollment enrollment = new Enrollment();
+            enrollment.setStudent(student);
+            enrollment.setCourse(course);
+            enrollment.setStatus(status != null ? status : "ENROLLED");
+
+            EnrollmentId targetId = this.id;
+            if (targetId == null) {
+                Long resolvedStudentId = student != null ? student.getId() : studentId;
+                Long resolvedCourseId = course != null ? course.getId() : courseId;
+                if (resolvedStudentId != null && resolvedCourseId != null && semester != null) {
+                    targetId = new EnrollmentId(resolvedStudentId, resolvedCourseId, semester);
+                }
+            } else if (semester != null && !semester.equals(targetId.getSemester())) {
+                targetId = new EnrollmentId(targetId.getStudentId(), targetId.getCourseId(), semester);
+            }
+
+            enrollment.setId(targetId);
+            return enrollment;
+        }
+    }
 }
