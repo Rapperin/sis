@@ -1,38 +1,45 @@
 package dev.talha.sis.student.service;
 
 import dev.talha.sis.student.dto.StudentDto;
+import dev.talha.sis.student.dto.StudentFilter;
 import dev.talha.sis.student.entity.Student;
 import dev.talha.sis.student.exception.ConflictException;
 import dev.talha.sis.student.exception.NotFoundException;
+import dev.talha.sis.student.mapper.StudentMapper;
 import dev.talha.sis.student.repo.StudentRepository;
+import dev.talha.sis.student.repo.StudentSpecifications;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 @Service
 public class StudentService {
 
     private final StudentRepository repo;
+    private final StudentMapper mapper;
 
-    public StudentService(StudentRepository repo) {
+    public StudentService(StudentRepository repo, StudentMapper mapper) {
         this.repo = repo;
+        this.mapper = mapper;
     }
 
     public StudentDto create(StudentDto dto) {
         repo.findByEmail(dto.email()).ifPresent(s -> {
             throw new ConflictException("email_exists");
         });
-        Student s = toEntity(dto);
+        Student s = mapper.toEntity(dto);
         s = repo.save(s);
-        return toDto(s);
+        return mapper.toDto(s);
     }
 
-    public Page<StudentDto> list(Pageable p) {
-        return repo.findAll(p).map(this::toDto);
+    public Page<StudentDto> list(StudentFilter filter, Pageable p) {
+        Specification<Student> spec = StudentSpecifications.fromFilter(filter);
+        return repo.findAll(spec, p).map(mapper::toDto);
     }
 
     public StudentDto get(Long id) {
-        return toDto(
+        return mapper.toDto(
                 repo.findById(id)
                         .orElseThrow(() -> new NotFoundException("student_not_found"))
         );
@@ -41,34 +48,11 @@ public class StudentService {
     public StudentDto update(Long id, StudentDto dto) {
         Student s = repo.findById(id)
                 .orElseThrow(() -> new NotFoundException("student_not_found"));
-        s.setFirstName(dto.firstName());
-        s.setLastName(dto.lastName());
-        s.setEmail(dto.email());
-        s.setBirthDate(dto.birthDate());
-        return toDto(repo.save(s));
+        mapper.updateEntity(dto, s);
+        return mapper.toDto(repo.save(s));
     }
 
     public void delete(Long id) {
         repo.deleteById(id);
-    }
-
-    private StudentDto toDto(Student s) {
-        return new StudentDto(
-                s.getId(),
-                s.getFirstName(),
-                s.getLastName(),
-                s.getEmail(),
-                s.getBirthDate()
-        );
-    }
-
-    private Student toEntity(StudentDto d) {
-        Student s = new Student();
-        s.setId(d.id());
-        s.setFirstName(d.firstName());
-        s.setLastName(d.lastName());
-        s.setEmail(d.email());
-        s.setBirthDate(d.birthDate());
-        return s;
     }
 }
